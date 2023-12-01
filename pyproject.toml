@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pybcl"
+description = "Compression and decompression using various algorithms provided by the basic compression library (BCL)."
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["compression", "decompression", "bcl", "basic compression library", "bcl1", "lz77", "huffman", "rle", "shannon-fano", "rice"]
+authors = [
+    {name = "AT0myks", email = "at0myks.dev@gmail.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: C",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Archiving :: Compression",
+    "Topic :: Utilities",
+    "Typing :: Typed"
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+Issues = "https://github.com/AT0myks/pybcl/issues"
+Source = "https://github.com/AT0myks/pybcl"
+
+[project.scripts]
+pybcl = "pybcl.__main__:main"
+
+[tool.setuptools]
+packages = ["pybcl"]
+package-data = {pybcl = ["py.typed"]}
+
+[tool.setuptools.dynamic]
+version = {attr = "pybcl.__version__"}
+
+[tool.cibuildwheel]
+archs = ["all"]
+build-verbosity = 3
+test-requires = "pytest"
+test-command = "pytest {package}/tests"
+test-skip = "*-win_arm64 *-macosx_arm64 *-macosx_universal2:arm64"
