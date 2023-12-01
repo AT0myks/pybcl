@@ -53,7 +53,7 @@
 * marcus.geelnard at home.se
 *************************************************************************/
 
-
+#include "bcl.h"
 
 /*************************************************************************
 * Types used for Shannon-Fano coding
@@ -380,18 +380,20 @@ static sf_treenode_t * _SF_RecoverTree( sf_treenode_t *nodes,
 *  out    - Output (compressed) buffer. This buffer must be 384 bytes
 *           larger than the input buffer.
 *  insize - Number of input bytes.
+*  work   - Unused.
+*  format - Unused.
 * The function returns the size of the compressed data.
 *************************************************************************/
 
 int SF_Compress( unsigned char *in, unsigned char *out,
-    unsigned int insize )
+    unsigned int insize, unsigned int *work, int format )
 {
     sf_sym_t       sym[256], tmp;
     sf_bitstream_t stream;
     unsigned int     k, total_bytes, swaps, symbol, last_symbol;
 
     /* Do we have anything to compress? */
-    if( insize < 1 ) return 0;
+    if( insize < 1 ) return BCL_E_OK;
 
     /* Initialize bitstream */
     _SF_InitBitstream( &stream, out );
@@ -453,10 +455,11 @@ int SF_Compress( unsigned char *in, unsigned char *out,
 *            enough to hold the uncompressed data.
 *  insize  - Number of input bytes.
 *  outsize - Number of output bytes.
+*  format  - Unused.
 *************************************************************************/
 
-void SF_Uncompress( unsigned char *in, unsigned char *out,
-    unsigned int insize, unsigned int outsize )
+int SF_Uncompress( unsigned char *in, unsigned char *out,
+    unsigned int insize, unsigned int *outsize, int format )
 {
     sf_treenode_t  nodes[MAX_TREE_NODES], *root, *node;
     sf_bitstream_t stream;
@@ -464,7 +467,11 @@ void SF_Uncompress( unsigned char *in, unsigned char *out,
     unsigned char    *buf;
 
     /* Do we have anything to decompress? */
-    if( insize < 1 ) return;
+    if( insize < 1 )
+    {
+        *outsize = 0;
+        return BCL_E_OK;
+    }
 
     /* Initialize bitstream */
     _SF_InitBitstream( &stream, in );
@@ -475,7 +482,7 @@ void SF_Uncompress( unsigned char *in, unsigned char *out,
 
     /* Decode input stream */
     buf = out;
-    for( k = 0; k < outsize; ++ k )
+    for( k = 0; k < *outsize; ++ k )
     {
         /* Traverse tree until we find a matching leaf node */
         node = root;
@@ -491,4 +498,6 @@ void SF_Uncompress( unsigned char *in, unsigned char *out,
         /* We found the matching leaf node and have the symbol */
         *buf ++ = (unsigned char) node->Symbol;
     }
+    /* No need to change outsize. */
+    return BCL_E_OK;
 }

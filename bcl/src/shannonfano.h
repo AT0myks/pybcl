@@ -42,9 +42,9 @@ extern "C" {
 *************************************************************************/
 
 int SF_Compress( unsigned char *in, unsigned char *out,
-                 unsigned int insize );
-void SF_Uncompress( unsigned char *in, unsigned char *out,
-                    unsigned int insize, unsigned int outsize );
+                 unsigned int insize, unsigned int *work, int format );
+int SF_Uncompress( unsigned char *in, unsigned char *out,
+                   unsigned int insize, unsigned int *outsize, int format );
 
 
 #ifdef __cplusplus

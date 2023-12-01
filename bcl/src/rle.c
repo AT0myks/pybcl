@@ -65,7 +65,7 @@
 * marcus.geelnard at home.se
 *************************************************************************/
 
-
+#include "bcl.h"
 
 /*************************************************************************
 *                           INTERNAL FUNCTIONS                           *
@@ -146,26 +146,25 @@ static void _RLE_WriteNonRep( unsigned char *out, unsigned int *outpos,
 
 /*************************************************************************
 * RLE_Compress() - Compress a block of data using an RLE coder.
-*  in      - Input (uncompressed) buffer.
-*  insize  - Number of input bytes.
-*  out     - Output (compressed) buffer. This buffer must be 0.4% larger
-*            than the input buffer, plus one byte.
-*  outsize - Number of bytes in the output buffer.
-* The function returns the size of the compressed data, or zero if the
-* compression failed (e.g. if there was a buffer overflow).
+*  in     - Input (uncompressed) buffer.
+*  out    - Output (compressed) buffer. This buffer must be 0.4% larger
+*           than the input buffer, plus one byte.
+*  insize - Number of input bytes.
+*  work   - Unused.
+*  format - Unused.
+* The function returns the size of the compressed data.
 *************************************************************************/
 
-int RLE_Compress( unsigned char *in, unsigned int insize,
-    unsigned char *out, unsigned int outsize )
+int RLE_Compress( unsigned char *in, unsigned char *out,
+    unsigned int insize, unsigned int *work, int format )
 {
   unsigned char byte1, byte2, marker;
   unsigned int  inpos, outpos, count, i, histogram[ 256 ];
 
-  /* Do we have anything to compress, and do we have enough space for the
-     compression header? */
-  if( (insize < 1) || (outsize < 1) )
+    /* Do we have anything to compress? */
+  if( insize < 1 )
   {
-    return 0;
+    return BCL_E_OK;
   }
 
   /* Create histogram */
@@ -264,24 +263,26 @@ int RLE_Compress( unsigned char *in, unsigned int insize,
 /*************************************************************************
 * RLE_Uncompress() - Uncompress a block of data using an RLE decoder.
 *  in      - Input (compressed) buffer.
-*  insize  - Number of input bytes.
 *  out     - Output (uncompressed) buffer. This buffer must be large
 *            enough to hold the uncompressed data.
+*  insize  - Number of input bytes.
 *  outsize - Number of bytes in the output buffer.
-* The function returns the size of the uncompressed data, or zero if the
+*  format  - Unused.
+* The function returns zero on success, or a negative value if the
 * decompression failed (e.g. if there was a buffer overflow).
 *************************************************************************/
 
-unsigned int RLE_Uncompress( unsigned char *in, unsigned int insize,
-  unsigned char *out, unsigned int outsize )
+int RLE_Uncompress( unsigned char *in, unsigned char *out,
+    unsigned int insize, unsigned int *outsize, int format )
 {
   unsigned char marker, symbol;
   unsigned int  i, inpos, outpos, count;
 
   /* Do we have anything to uncompress, and enough space for the output? */
-  if( (insize < 2) || (outsize < 1) )
+  if( (insize < 2) || (*outsize < 1) )
   {
-    return 0;
+    *outsize = 0;
+    return BCL_E_OK;
   }
 
   /* Get marker symbol from input stream */
@@ -295,12 +296,15 @@ unsigned int RLE_Uncompress( unsigned char *in, unsigned int insize,
     symbol = in[ inpos ++ ];
     if( symbol == marker )
     {
+      if (inpos >= insize) {
+        return BCL_E_INPUT_OVERRUN;
+      }
       /* We had a marker byte */
       count = in[ inpos ++ ];
       if( count <= 2 )
       {
         /* Counts 0, 1 and 2 are used for marker byte repetition only */
-        for( i = 0; (i <= count) && (outpos < outsize); ++ i )
+        for( i = 0; (i <= count) && (outpos < *outsize); ++ i )
         {
           out[ outpos ++ ] = marker;
         }
@@ -309,10 +313,16 @@ unsigned int RLE_Uncompress( unsigned char *in, unsigned int insize,
       {
         if( count & 0x80 )
         {
+          if (inpos >= insize) {
+            return BCL_E_INPUT_OVERRUN;
+          }
           count = ((count & 0x7f) << 8) + in[ inpos ++ ];
         }
+        if (inpos >= insize) {
+          return BCL_E_INPUT_OVERRUN;
+        }
         symbol = in[ inpos ++ ];
-        for( i = 0; (i <= count) && (outpos < outsize); ++ i )
+        for( i = 0; (i <= count) && (outpos < *outsize); ++ i )
         {
           out[ outpos ++ ] = symbol;
         }
@@ -324,11 +334,16 @@ unsigned int RLE_Uncompress( unsigned char *in, unsigned int insize,
       out[ outpos ++ ] = symbol;
     }
   }
-  while( (inpos < insize) && (outpos < outsize) );
+  while( (inpos < insize) && (outpos < *outsize) );
 
   /* Was the operation aborted (i.e. did we have an buffer overflow)? */
   if( inpos < insize )
-    return 0;
+  {
+    return BCL_E_OUTPUT_OVERRUN;
+  }
   else
-    return outpos;
+  {
+    *outsize = outpos;
+    return BCL_E_OK;
+  }
 }

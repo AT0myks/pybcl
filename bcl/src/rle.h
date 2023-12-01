@@ -41,10 +41,10 @@ extern "C" {
 * Function prototypes
 *************************************************************************/
 
-unsigned int RLE_Compress( unsigned char *in, unsigned int insize,
-                           unsigned char *out, unsigned int outsize );
-unsigned int RLE_Uncompress( unsigned char *in, unsigned int insize,
-                             unsigned char *out, unsigned int outsize );
+int RLE_Compress( unsigned char *in, unsigned char *out,
+                  unsigned int insize, unsigned int *work, int format );
+int RLE_Uncompress( unsigned char *in, unsigned char *out,
+                    unsigned int insize, unsigned int *outsize, int format );
 
 
 #ifdef __cplusplus

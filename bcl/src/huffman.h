@@ -42,9 +42,9 @@ extern "C" {
 *************************************************************************/
 
 int Huffman_Compress( unsigned char *in, unsigned char *out,
-                      unsigned int insize );
-void Huffman_Uncompress( unsigned char *in, unsigned char *out,
-                         unsigned int insize, unsigned int outsize );
+                      unsigned int insize, unsigned int *work, int format );
+int Huffman_Uncompress( unsigned char *in, unsigned char *out,
+                        unsigned int insize, unsigned int *outsize, int format );
 
 
 #ifdef __cplusplus

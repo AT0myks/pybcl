@@ -77,6 +77,7 @@
 * marcus.geelnard at home.se
 *************************************************************************/
 
+#include "bcl.h"
 
 /*************************************************************************
 * Constants used for LZ77 coding
@@ -150,7 +151,7 @@ static int _LZ_WriteVarSize( unsigned int x, unsigned char * buf )
 * bytes depending on value.
 *************************************************************************/
 
-static int _LZ_ReadVarSize( unsigned int * x, unsigned char * buf )
+static int _LZ_ReadVarSize( unsigned int * x, unsigned char * buf, unsigned int maxread, int *err )
 {
     unsigned int y, b, num_bytes;
 
@@ -159,6 +160,10 @@ static int _LZ_ReadVarSize( unsigned int * x, unsigned char * buf )
     num_bytes = 0;
     do
     {
+        if (num_bytes >= maxread) {
+            *err = BCL_E_INPUT_OVERRUN;
+            return num_bytes;
+        }
         b = (unsigned int) (*buf ++);
         y = (y << 7) | (b & 0x0000007f);
         ++ num_bytes;
@@ -185,11 +190,13 @@ static int _LZ_ReadVarSize( unsigned int * x, unsigned char * buf )
 *  out    - Output (compressed) buffer. This buffer must be 0.4% larger
 *           than the input buffer, plus one byte.
 *  insize - Number of input bytes.
+*  work   - Unused.
+*  format - Unused.
 * The function returns the size of the compressed data.
 *************************************************************************/
 
 int LZ_Compress( unsigned char *in, unsigned char *out,
-    unsigned int insize )
+    unsigned int insize, unsigned int *work, int format )
 {
     unsigned char marker, symbol;
     unsigned int  inpos, outpos, bytesleft, i;
@@ -201,7 +208,7 @@ int LZ_Compress( unsigned char *in, unsigned char *out,
     /* Do we have anything to compress? */
     if( insize < 1 )
     {
-        return 0;
+        return BCL_E_OK;
     }
 
     /* Create histogram */
@@ -320,11 +327,12 @@ int LZ_Compress( unsigned char *in, unsigned char *out,
 *  insize - Number of input bytes.
 *  work   - Pointer to a temporary buffer (internal working buffer), which
 *           must be able to hold (insize+65536) unsigned integers.
+*  format - Unused.
 * The function returns the size of the compressed data.
 *************************************************************************/
 
 int LZ_CompressFast( unsigned char *in, unsigned char *out,
-    unsigned int insize, unsigned int *work )
+    unsigned int insize, unsigned int *work, int format )
 {
     unsigned char marker, symbol;
     unsigned int  inpos, outpos, bytesleft, i, index, symbols;
@@ -336,7 +344,7 @@ int LZ_CompressFast( unsigned char *in, unsigned char *out,
     /* Do we have anything to compress? */
     if( insize < 1 )
     {
-        return 0;
+        return BCL_E_OK;
     }
 
     /* Assign arrays to the working area */
@@ -477,18 +485,22 @@ int LZ_CompressFast( unsigned char *in, unsigned char *out,
 *  out     - Output (uncompressed) buffer. This buffer must be large
 *            enough to hold the uncompressed data.
 *  insize  - Number of input bytes.
+*  outsize - Number of output bytes.
+*  format  - Unused
 *************************************************************************/
 
-void LZ_Uncompress( unsigned char *in, unsigned char *out,
-    unsigned int insize )
+int LZ_Uncompress( unsigned char *in, unsigned char *out,
+    unsigned int insize, unsigned int *outsize, int format )
 {
     unsigned char marker, symbol;
     unsigned int  i, inpos, outpos, length, offset;
+    int err = 0;
 
     /* Do we have anything to uncompress? */
     if( insize < 1 )
     {
-        return;
+        *outsize = 0;
+        return BCL_E_OK;
     }
 
     /* Get marker symbol from input stream */
@@ -499,9 +511,18 @@ void LZ_Uncompress( unsigned char *in, unsigned char *out,
     outpos = 0;
     do
     {
+        if (outpos >= *outsize) {
+            return BCL_E_OUTPUT_OVERRUN;
+        }
+        if (inpos >= insize) {
+            return BCL_E_INPUT_OVERRUN;
+        }
         symbol = in[ inpos ++ ];
         if( symbol == marker )
         {
+            if (inpos >= insize) {
+                return BCL_E_INPUT_OVERRUN;
+            }
             /* We had a marker byte */
             if( in[ inpos ] == 0 )
             {
@@ -512,12 +533,21 @@ void LZ_Uncompress( unsigned char *in, unsigned char *out,
             else
             {
                 /* Extract true length and offset */
-                inpos += _LZ_ReadVarSize( &length, &in[ inpos ] );
-                inpos += _LZ_ReadVarSize( &offset, &in[ inpos ] );
+                inpos += _LZ_ReadVarSize( &length, &in[ inpos ], insize - inpos, &err );
+                if (inpos >= insize || err != 0) {
+                    return BCL_E_INPUT_OVERRUN;
+                }
+                inpos += _LZ_ReadVarSize( &offset, &in[ inpos ], insize - inpos, &err );
+                if (err != 0) {
+                    return BCL_E_INPUT_OVERRUN;
+                }
 
                 /* Copy corresponding data from history window */
                 for( i = 0; i < length; ++ i )
                 {
+                    if (outpos >= *outsize || (outpos - offset) >= *outsize) {
+                        return BCL_E_OUTPUT_OVERRUN;
+                    }
                     out[ outpos ] = out[ outpos - offset ];
                     ++ outpos;
                 }
@@ -530,4 +560,6 @@ void LZ_Uncompress( unsigned char *in, unsigned char *out,
         }
     }
     while( inpos < insize );
+    *outsize = outpos;
+    return BCL_E_OK;
 }

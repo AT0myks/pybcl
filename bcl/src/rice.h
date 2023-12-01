@@ -55,9 +55,9 @@ extern "C" {
 * Function prototypes
 *************************************************************************/
 
-int Rice_Compress( void *in, void *out, unsigned int insize, int format );
-void Rice_Uncompress( void *in, void *out, unsigned int insize,
-                      unsigned int outsize, int format );
+int Rice_Compress( void *in, void *out, unsigned int insize, unsigned int *work, int format );
+int Rice_Uncompress( void *in, void *out, unsigned int insize,
+                      unsigned int *outsize, int format );
 
 
 #ifdef __cplusplus

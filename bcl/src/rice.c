@@ -101,8 +101,8 @@
 * marcus.geelnard at home.se
 *************************************************************************/
 
+#include "bcl.h"
 #include "rice.h"
-
 
 
 /*************************************************************************
@@ -402,11 +402,12 @@ static void _Rice_WriteWord( void *ptr, unsigned int idx, int format,
 *  out    - Output (compressed) buffer. This buffer must one byte larger
 *           than the input buffer.
 *  insize - Number of input bytes.
+*  work   - Unused.
 *  format - Binary format (see rice.h)
 * The function returns the size of the compressed data.
 *************************************************************************/
 
-int Rice_Compress( void *in, void *out, unsigned int insize, int format )
+int Rice_Compress( void *in, void *out, unsigned int insize, unsigned int *work, int format )
 {
     rice_bitstream_t stream;
     unsigned int     i, x, k, n, wordsize, incount;
@@ -422,14 +423,14 @@ int Rice_Compress( void *in, void *out, unsigned int insize, int format )
         case RICE_FMT_UINT16: wordsize = 16; break;
         case RICE_FMT_INT32:
         case RICE_FMT_UINT32: wordsize = 32; break;
-        default: return 0;
+        default: return BCL_E_ERROR;
     }
     incount = insize / (wordsize>>3);
 
     /* Do we have anything to compress? */
     if( incount == 0 )
     {
-        return 0;
+        return BCL_E_OK;
     }
 
     /* Initialize output bitsream */
@@ -505,8 +506,8 @@ int Rice_Compress( void *in, void *out, unsigned int insize, int format )
 *  format  - Binary format (see rice.h)
 *************************************************************************/
 
-void Rice_Uncompress( void *in, void *out, unsigned int insize,
-  unsigned int outsize, int format )
+int Rice_Uncompress( void *in, void *out, unsigned int insize,
+  unsigned int *outsize, int format )
 {
     rice_bitstream_t stream;
     unsigned int     i, x, k, wordsize, outcount;
@@ -522,14 +523,15 @@ void Rice_Uncompress( void *in, void *out, unsigned int insize,
         case RICE_FMT_UINT16: wordsize = 16; break;
         case RICE_FMT_INT32:
         case RICE_FMT_UINT32: wordsize = 32; break;
-        default: return;
+        default: return BCL_E_ERROR;
     }
-    outcount = outsize / (wordsize>>3);
+    outcount = *outsize / (wordsize>>3);
 
     /* Do we have anything to decompress? */
     if( outcount == 0 )
     {
-        return;
+        *outsize = 0;
+        return BCL_E_OK;
     }
 
     /* Initialize input bitsream */
@@ -579,4 +581,5 @@ void Rice_Uncompress( void *in, void *out, unsigned int insize,
             hist[ i % RICE_HISTORY ] = _Rice_NumBits( x );
         }
     }
+    return BCL_E_OK;
 }
